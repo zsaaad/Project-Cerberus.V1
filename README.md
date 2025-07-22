@@ -1,10 +1,10 @@
-# Project Cerberus - Multi-Platform Marketing API Integration
+# Project Cerberus - Complete Marketing Attribution Platform
 
 Project Cerberus is an automated performance marketing analysis tool designed to eliminate manual data aggregation and provide proactive campaign optimization insights for MY, PH, and TH markets.
 
 ## Overview
 
-This project includes comprehensive API integrations that fetch yesterday's ad-level performance data from both **Meta Marketing API** and **Google Ads API**, formatted for spreadsheet import and optimized to support Cerberus's core alert system:
+This project includes comprehensive API integrations that fetch yesterday's ad-level performance data from **Meta Marketing API**, **Google Ads API**, and **Salesforce**, creating a complete attribution chain from ad spend to business outcomes. The unified dataset supports Cerberus's core alert system:
 
 - **Zero Performance Alert**: Identify ad sets spending >$50 with 0 conversions
 - **Top Performer Alert**: Detect ad sets with CPL <50% of market average  
@@ -12,18 +12,20 @@ This project includes comprehensive API integrations that fetch yesterday's ad-l
 
 ## Features
 
-- ✅ **Dual Platform Support** - Meta Marketing API + Google Ads API
+- ✅ **Complete Attribution Chain** - Meta + Google Ads + Salesforce integration
 - ✅ **Ad-level granularity** for detailed performance analysis
 - ✅ **Yesterday's data** with automatic date handling
 - ✅ **GAQL queries** for Google Ads with advanced filtering
-- ✅ **Unified output format** - both platforms return identical data structures
-- ✅ **Conversion tracking** for all relevant action types (leads, registrations, etc.)
-- ✅ **CPL calculations** for performance benchmarking
-- ✅ **Funnel metrics** (CTR, click-to-conversion rates)
-- ✅ **Spreadsheet-ready output** as list of dictionaries
-- ✅ **CSV export** functionality
-- ✅ **Comprehensive testing** for both integrations
-- ✅ **Error handling** and logging
+- ✅ **SOQL queries** for Salesforce with UTM attribution tracking
+- ✅ **Unified output format** - all platforms return identical data structures
+- ✅ **Attribution joining** - left join from ad data to Salesforce leads via UTM parameters
+- ✅ **Conversion source of truth** - Salesforce leads override platform conversion data
+- ✅ **CPL calculations** for performance benchmarking with actual lead data
+- ✅ **Funnel metrics** (CTR, click-to-conversion rates) with attribution insights
+- ✅ **Spreadsheet-ready output** as list of dictionaries with enriched attribution
+- ✅ **CSV export** functionality for complete attributed datasets
+- ✅ **Comprehensive testing** for all integrations
+- ✅ **Error handling** and logging across all platforms
 - ✅ **Multi-account support** ready
 
 ## Installation
@@ -49,7 +51,7 @@ This project includes comprehensive API integrations that fetch yesterday's ad-l
 
 ### Required Environment Variables
 
-Create a `.env` file with your API credentials for both platforms:
+Create a `.env` file with your API credentials for all platforms:
 
 ```env
 # Meta Marketing API
@@ -64,6 +66,11 @@ GOOGLE_ADS_CLIENT_ID=your_google_ads_client_id_here
 GOOGLE_ADS_CLIENT_SECRET=your_google_ads_client_secret_here
 GOOGLE_ADS_REFRESH_TOKEN=your_google_ads_refresh_token_here
 GOOGLE_ADS_CUSTOMER_ID=1234567890
+
+# Salesforce API
+SALESFORCE_USERNAME=your_salesforce_username@company.com
+SALESFORCE_PASSWORD=your_salesforce_password
+SALESFORCE_SECURITY_TOKEN=your_salesforce_security_token
 ```
 
 ### Getting API Credentials
@@ -78,6 +85,11 @@ GOOGLE_ADS_CUSTOMER_ID=1234567890
 2. **OAuth Credentials**: Create OAuth2 credentials in Google Cloud Console
 3. **Refresh Token**: Generate using OAuth2 flow with `https://www.googleapis.com/auth/adwords` scope
 4. **Customer ID**: Find in your Google Ads account (format: `1234567890`)
+
+**Salesforce API:**
+1. **Username/Password**: Your Salesforce login credentials
+2. **Security Token**: Generate in Salesforce Setup → Personal Information → Reset Security Token
+3. **Custom Fields**: Create UTM tracking fields (`utm_campaign_id__c`, `utm_adset_id__c`, `utm_ad_id__c`) in Lead object
 
 ## Usage
 
@@ -118,18 +130,48 @@ ad_data = fetcher.fetch_ad_performance_data()
 print(f"Fetched {len(ad_data)} Google ad records")
 ```
 
+**Salesforce API:**
+```python
+from salesforce_fetcher import SalesforceAPIFetcher
+
+# Initialize fetcher
+fetcher = SalesforceAPIFetcher(
+    username="user@company.com",
+    password="password",
+    security_token="security_token"
+)
+
+# Fetch attribution data
+attribution_data = fetcher.fetch_attribution_data()
+print(f"Fetched {len(attribution_data['leads'])} leads")
+```
+
+**Complete Attribution Processing:**
+```python
+from data_merger import CerberusDataMerger
+
+merger = CerberusDataMerger()
+unified_data = merger.merge_platform_data(
+    meta_data, google_data, salesforce_data
+)
+# Creates complete attribution: Ad Spend → Leads → Conversions
+```
+
 ### Command Line Usage
 
 ```bash
-# Run Meta API fetcher
+# Run individual API fetchers
 python3 meta_api_fetcher.py
-
-# Run Google Ads API fetcher  
 python3 google_api_fetcher.py
+python3 salesforce_fetcher.py
+
+# Run complete attribution processing
+python3 data_merger.py
 
 # Run tests
 python3 test_meta_api.py
 python3 test_google_api.py
+python3 test_salesforce_api.py
 ```
 
 ### Data Fields Included
@@ -147,21 +189,28 @@ The script fetches comprehensive ad-level data optimized for Cerberus alerts:
 - `frequency`, `cost_per_1000_people_reached`
 
 **Conversion Data:**
-- `total_conversions`, `lead_conversions`
-- `cost_per_lead`, `cost_per_conversion`
+- `total_conversions`, `lead_conversions` (platform-reported)
+- `sf_lead_count`, `sf_converted_count` (Salesforce source of truth)
+- `cost_per_lead`, `cost_per_conversion` (calculated with actual leads)
 - Individual conversion types (`conversions_lead`, `conversions_purchase`, etc.)
 
+**Attribution Data:**
+- `utm_campaign_id`, `utm_adset_id`, `utm_ad_id` (join keys)
+- `sf_lead_statuses`, `sf_lead_sources` (Salesforce lead details)
+- `has_salesforce_data` (attribution match flag)
+
 **Funnel Analysis:**
-- `click_to_conversion_rate`
+- `click_to_conversion_rate` (with attributed conversions)
 - Status and delivery information
 
 ## Data Output Format
 
-The script returns a list of dictionaries, each representing one ad's performance:
+The system returns a list of dictionaries, each representing one ad's complete attribution:
 
 ```python
 [
     {
+        'platform': 'Meta',
         'campaign_name': 'Q1 Lead Gen Campaign',
         'adset_name': 'Malaysia - Tech Professionals', 
         'ad_name': 'Demo CTA Creative A',
@@ -169,24 +218,37 @@ The script returns a list of dictionaries, each representing one ad's performanc
         'impressions': 12543,
         'clicks': 234,
         'ctr': 1.87,
+        
+        # Platform-reported conversions
+        'total_conversions': 8,
         'lead_conversions': 8,
-        'cost_per_lead': 5.71,
-        'click_to_conversion_rate': 3.42,
+        
+        # Salesforce attribution (source of truth)
+        'sf_lead_count': 2,
+        'sf_converted_count': 1,
+        'sf_lead_statuses': 'Qualified, New',
+        'sf_first_lead_email': 'john.doe@company.com',
+        'has_salesforce_data': True,
+        
+        # Updated metrics with attribution
+        'cost_per_lead': 22.84,  # $45.67 / 2 actual leads
+        'click_to_conversion_rate': 0.85,  # 2 leads / 234 clicks
+        
         'date_start': '2025-01-20',
-        # ... additional fields
+        # ... 35+ additional attribution fields
     },
-    # ... more ad records
+    # ... more attributed ad records
 ]
 ```
 
 ## Integration with Cerberus Pipeline
 
-This script serves as the Meta data source for the Cerberus alert system:
+This platform serves as the complete data source for the Cerberus alert system:
 
-1. **Daily Execution**: Run automatically each morning to fetch yesterday's data
-2. **Data Processing**: Feed output into Cerberus analysis engine  
-3. **Alert Generation**: Powers Zero Performance, Top Performer, and Funnel Mismatch alerts
-4. **Multi-Platform**: Designed to combine with Google Ads and Salesforce data
+1. **Daily Execution**: Run automatically each morning to fetch yesterday's attributed data
+2. **Attribution Processing**: Join ad spend data with actual Salesforce leads via UTM parameters
+3. **Alert Generation**: Powers Zero Performance, Top Performer, and Funnel Mismatch alerts with source-of-truth conversion data
+4. **End-to-End Attribution**: Complete chain from ad spend → clicks → leads → conversions
 
 ## Error Handling
 
